@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/bootstrap_sessao.php';
 require __DIR__ . '/../app/helpers.php';
 
 $hoteis = conectar()->query('SELECT id, nome FROM hoteis WHERE ativo = 1 ORDER BY nome')->fetchAll();
