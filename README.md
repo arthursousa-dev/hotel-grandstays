@@ -2,7 +2,7 @@
 
 Plataforma de reservas de hotel: catálogo dinâmico com filtro por categoria, solicitação de reserva persistida em banco de dados, e painel administrativo completo (CRUD de hotéis, gestão de status de reserva).
 
-Convertido de um site estático (HTML/CSS puro, com hotéis fixos no markup) para uma aplicação PHP + MySQL com backend funcional de verdade.
+Convertido de um site estático (HTML/CSS puro, com hotéis fixos no markup) para uma aplicação PHP + PostgreSQL com backend funcional de verdade.
 
 ## Arquitetura
 
@@ -27,22 +27,22 @@ public/                     # document root
 
 ## Decisões técnicas
 
-- **PDO com prepared statements** em toda query.
-- **Senha do admin em bcrypt** (`password_hash`/`password_verify`).
+- **PDO com prepared statements** em toda query, contra **PostgreSQL**.
+- **Senha do admin em bcrypt** (`password_hash`/`password_verify`), com **bloqueio de conta** após 5 tentativas de login incorretas seguidas (15 minutos).
+- **Cookies de sessão** com `httponly`, `samesite=Lax` e `secure` (quando em HTTPS).
 - **CSRF** em todo formulário que altera dado (reserva, login admin, CRUD de hotel, exclusão, mudança de status).
 - **Redirecionamento pós-reserva restrito por allowlist** (`destinoSeguro()` em `reservar.php`) — evita open redirect, já que o destino de retorno vem de um campo do formulário.
-- **Exclusão lógica** de hotel (`ativo = 0`) em vez de `DELETE`, preservando o histórico de reservas já feitas para aquele hotel.
+- **Exclusão lógica** de hotel (`ativo = false`) em vez de `DELETE`, preservando o histórico de reservas já feitas para aquele hotel.
 - **Validação de datas no servidor**: checkout precisa ser depois do checkin, tanto via `CHECK` constraint no banco quanto em PHP antes do insert.
 
 ## Como rodar localmente
 
 ```bash
-mysql -u root -p < database/schema.sql
+createdb grandstays
+psql grandstays < database/schema.sql
+psql grandstays < database/seed.sql
 
-export DB_HOST=localhost
-export DB_NAME=grandstays
-export DB_USER=root
-export DB_PASS=
+cp .env.example .env
 
 php -S localhost:8000 -t public
 ```
