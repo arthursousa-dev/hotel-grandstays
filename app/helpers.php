@@ -36,6 +36,100 @@ function lerDecimal(string $valor): float
     return (float) str_replace(['.', ','], ['', '.'], $valor);
 }
 
+/** Data real no formato AAAA-MM-DD; texto livre ou "2026-02-30" derrubava o INSERT com erro 500. */
+function dataValida(string $data): bool
+{
+    $dt = DateTimeImmutable::createFromFormat('!Y-m-d', $data);
+    return $dt !== false && $dt->format('Y-m-d') === $data;
+}
+
+/**
+ * Valida o formulário de reserva. Devolve [dados limpos, lista de campos inválidos].
+ * A existência do hotel é conferida à parte, no banco.
+ */
+function validarReserva(array $entrada, ?string $hoje = null): array
+{
+    $hoje ??= date('Y-m-d');
+    $dados = [
+        'hotel_id' => (int) ($entrada['hotel_id'] ?? 0),
+        'nome'     => trim((string) ($entrada['nome'] ?? '')),
+        'email'    => trim((string) ($entrada['email'] ?? '')),
+        'checkin'  => trim((string) ($entrada['checkin'] ?? '')),
+        'checkout' => trim((string) ($entrada['checkout'] ?? '')),
+        'hospedes' => (int) ($entrada['hospedes'] ?? 1),
+        'mensagem' => trim((string) ($entrada['mensagem'] ?? '')),
+    ];
+
+    $erros = [];
+    if ($dados['nome'] === '' || preg_match_all('/./su', $dados['nome']) > 150) $erros[] = 'nome';
+    if (!filter_var($dados['email'], FILTER_VALIDATE_EMAIL) || strlen($dados['email']) > 150) $erros[] = 'e-mail';
+    if (!dataValida($dados['checkin']) || !dataValida($dados['checkout'])
+        || $dados['checkin'] < $hoje || $dados['checkout'] <= $dados['checkin']) $erros[] = 'datas';
+    if ($dados['hospedes'] < 1 || $dados['hospedes'] > 10) $erros[] = 'hóspedes';
+
+    return [$dados, $erros];
+}
+
+/** Número de diárias entre check-in e check-out (datas já validadas). */
+function noites(string $checkin, string $checkout): int
+{
+    return (new DateTimeImmutable($checkin))->diff(new DateTimeImmutable($checkout))->days;
+}
+
+/**
+ * Metadados de paginação a partir do total de itens e da página pedida
+ * (fora do intervalo vira a primeira ou a última página).
+ */
+function paginar(int $total, int $porPagina, int $pagina): array
+{
+    $totalPaginas = max(1, (int) ceil($total / $porPagina));
+    $pagina = max(1, min($totalPaginas, $pagina));
+    return ['pagina' => $pagina, 'total_paginas' => $totalPaginas, 'offset' => ($pagina - 1) * $porPagina, 'limite' => $porPagina];
+}
+
+/** Escapa % e _ para que o texto digitado na busca seja procurado literalmente no ILIKE. */
+function termoBusca(string $texto): string
+{
+    return '%' . addcslashes(trim($texto), '%_\\') . '%';
+}
+
+/**
+ * Envia ao hóspede o resumo da solicitação de reserva. Só envia com RESERVAS_EMAIL_REMETENTE
+ * definido; falha do mail() vai para o log e não desfaz a reserva.
+ */
+function enviarConfirmacaoReserva(array $reserva, array $hotel): bool
+{
+    $remetente = getenv('RESERVAS_EMAIL_REMETENTE') ?: '';
+    if (!filter_var($remetente, FILTER_VALIDATE_EMAIL)) {
+        return false;
+    }
+
+    $noites = noites($reserva['checkin'], $reserva['checkout']);
+    $total = $noites * (float) $hotel['preco_noite'];
+    $corpo = implode("\r\n", [
+        "Olá, {$reserva['nome']}!",
+        '',
+        'Recebemos sua solicitação de reserva. Nossa equipe confirma a disponibilidade em até 2 horas úteis.',
+        '',
+        'Hotel: ' . $hotel['nome'] . ' — ' . $hotel['localizacao'],
+        'Check-in: ' . formatarDataBr($reserva['checkin']),
+        'Check-out: ' . formatarDataBr($reserva['checkout']),
+        "Hóspedes: {$reserva['hospedes']}",
+        "Diárias: {$noites} × " . formatarPreco((float) $hotel['preco_noite']) . ' = ' . formatarPreco($total) . ' (estimativa)',
+        '',
+        'GrandStays',
+    ]);
+    $assunto = '=?UTF-8?B?' . base64_encode('Recebemos sua reserva — ' . $hotel['nome']) . '?=';
+    $cabecalhos = "From: GrandStays <{$remetente}>\r\nContent-Type: text/plain; charset=UTF-8";
+
+    // O destinatário já passou por FILTER_VALIDATE_EMAIL, que não aceita quebra de linha.
+    $enviado = @mail($reserva['email'], $assunto, $corpo, $cabecalhos);
+    if (!$enviado) {
+        error_log('enviarConfirmacaoReserva: mail() falhou para ' . $reserva['email']);
+    }
+    return $enviado;
+}
+
 function formatarDataBr(string $data): string
 {
     $dt = date_create($data);

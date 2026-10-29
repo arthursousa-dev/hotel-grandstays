@@ -31,30 +31,13 @@ if (!csrfValido($_POST['csrf_token'] ?? null)) {
     exit;
 }
 
-$nome     = trim($_POST['nome'] ?? '');
-$email    = trim($_POST['email'] ?? '');
-$checkin  = trim((string) ($_POST['checkin'] ?? ''));
-$checkout = trim((string) ($_POST['checkout'] ?? ''));
-$hospedes = (int) ($_POST['hospedes'] ?? 1);
-$mensagem = trim($_POST['mensagem'] ?? '');
-
-/** Data real no formato AAAA-MM-DD; texto livre ou "2026-02-30" derrubava o INSERT com erro 500. */
-function dataValida(string $data): bool
-{
-    $dt = DateTimeImmutable::createFromFormat('!Y-m-d', $data);
-    return $dt !== false && $dt->format('Y-m-d') === $data;
-}
-
-$erros = [];
-if ($nome === '' || preg_match_all('/./su', $nome) > 150) $erros[] = 'nome';
-if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 150) $erros[] = 'e-mail';
-if (!dataValida($checkin) || !dataValida($checkout) || $checkin < date('Y-m-d') || $checkout <= $checkin) $erros[] = 'datas';
-if ($hospedes < 1 || $hospedes > 10) $erros[] = 'hóspedes';
+[$reserva, $erros] = validarReserva($_POST);
 
 $pdo = conectar();
-$stmt = $pdo->prepare('SELECT id FROM hoteis WHERE id = :id AND ativo');
-$stmt->execute([':id' => $hotelId]);
-if (!$stmt->fetch()) {
+$stmt = $pdo->prepare('SELECT id, nome, localizacao, preco_noite FROM hoteis WHERE id = :id AND ativo');
+$stmt->execute([':id' => $reserva['hotel_id']]);
+$hotel = $stmt->fetch();
+if (!$hotel) {
     $erros[] = 'hotel';
 }
 
@@ -69,14 +52,16 @@ $insere = $pdo->prepare(
      VALUES (:hotel_id, :nome, :email, :checkin, :checkout, :hospedes, :mensagem)'
 );
 $insere->execute([
-    ':hotel_id' => $hotelId,
-    ':nome'     => $nome,
-    ':email'    => $email,
-    ':checkin'  => $checkin,
-    ':checkout' => $checkout,
-    ':hospedes' => $hospedes,
-    ':mensagem' => $mensagem !== '' ? $mensagem : null,
+    ':hotel_id' => $reserva['hotel_id'],
+    ':nome'     => $reserva['nome'],
+    ':email'    => $reserva['email'],
+    ':checkin'  => $reserva['checkin'],
+    ':checkout' => $reserva['checkout'],
+    ':hospedes' => $reserva['hospedes'],
+    ':mensagem' => $reserva['mensagem'] !== '' ? $reserva['mensagem'] : null,
 ]);
+
+enviarConfirmacaoReserva($reserva, $hotel);
 
 $_SESSION['reserva_ok'] = true;
 header('Location: ' . $destino);
