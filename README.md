@@ -42,7 +42,7 @@ createdb grandstays
 psql grandstays < database/schema.sql
 psql grandstays < database/seed.sql
 
-cp .env.example .env
+cp .env.example .env        # preencha DB_PASS; variáveis de ambiente do servidor têm prioridade
 
 php -S localhost:8000 -t public
 ```
