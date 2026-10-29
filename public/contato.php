@@ -75,7 +75,7 @@ unset($_SESSION['reserva_ok']);
             <div class="form-row">
               <div class="form-field" style="margin-bottom:0">
                 <label for="nome">Nome completo</label>
-                <input type="text" id="nome" name="nome" placeholder="Seu nome completo" required>
+                <input type="text" id="nome" name="nome" placeholder="Seu nome completo" maxlength="150" required>
               </div>
               <div class="form-field" style="margin-bottom:0">
                 <label for="email">E-mail</label>
@@ -86,11 +86,11 @@ unset($_SESSION['reserva_ok']);
             <div class="form-row">
               <div class="form-field" style="margin-bottom:0">
                 <label for="checkin">Data de check-in</label>
-                <input type="date" id="checkin" name="checkin" required>
+                <input type="date" id="checkin" name="checkin" min="<?= date('Y-m-d') ?>" required>
               </div>
               <div class="form-field" style="margin-bottom:0">
                 <label for="checkout">Data de check-out</label>
-                <input type="date" id="checkout" name="checkout" required>
+                <input type="date" id="checkout" name="checkout" min="<?= date('Y-m-d', strtotime('+1 day')) ?>" required>
               </div>
             </div>
 

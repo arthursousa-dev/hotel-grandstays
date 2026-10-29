@@ -33,15 +33,22 @@ if (!csrfValido($_POST['csrf_token'] ?? null)) {
 
 $nome     = trim($_POST['nome'] ?? '');
 $email    = trim($_POST['email'] ?? '');
-$checkin  = $_POST['checkin'] ?? '';
-$checkout = $_POST['checkout'] ?? '';
+$checkin  = trim((string) ($_POST['checkin'] ?? ''));
+$checkout = trim((string) ($_POST['checkout'] ?? ''));
 $hospedes = (int) ($_POST['hospedes'] ?? 1);
 $mensagem = trim($_POST['mensagem'] ?? '');
 
+/** Data real no formato AAAA-MM-DD; texto livre ou "2026-02-30" derrubava o INSERT com erro 500. */
+function dataValida(string $data): bool
+{
+    $dt = DateTimeImmutable::createFromFormat('!Y-m-d', $data);
+    return $dt !== false && $dt->format('Y-m-d') === $data;
+}
+
 $erros = [];
-if ($nome === '') $erros[] = 'nome';
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $erros[] = 'e-mail';
-if (!$checkin || !$checkout || $checkout <= $checkin) $erros[] = 'datas';
+if ($nome === '' || preg_match_all('/./su', $nome) > 150) $erros[] = 'nome';
+if (!filter_var($email, FILTER_VALIDATE_EMAIL) || strlen($email) > 150) $erros[] = 'e-mail';
+if (!dataValida($checkin) || !dataValida($checkout) || $checkin < date('Y-m-d') || $checkout <= $checkin) $erros[] = 'datas';
 if ($hospedes < 1 || $hospedes > 10) $erros[] = 'hóspedes';
 
 $pdo = conectar();
