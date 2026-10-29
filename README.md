@@ -33,6 +33,8 @@ public/                     # document root
 - **CSRF** em todo formulário que altera dado (reserva, login admin, CRUD de hotel, exclusão, mudança de status).
 - **Redirecionamento pós-reserva restrito por allowlist** (`destinoSeguro()` em `reservar.php`) — evita open redirect, já que o destino de retorno vem de um campo do formulário.
 - **Exclusão lógica** de hotel (`ativo = false`) em vez de `DELETE`, preservando o histórico de reservas já feitas para aquele hotel.
+- **Busca e paginação no catálogo**: texto livre em nome, cidade e comodidades (`ILIKE` com `%` e `_` escapados, então o que o usuário digita é procurado literalmente), combinável com o filtro de categoria, 6 hotéis por página.
+- **E-mail de confirmação ao hóspede** com datas, número de diárias e estimativa de valor (`RESERVAS_EMAIL_REMETENTE` no `.env`); falha de envio vai para o log e não desfaz a reserva.
 - **Validação de datas no servidor**: checkout precisa ser depois do checkin, tanto via `CHECK` constraint no banco quanto em PHP antes do insert.
 
 ## Como rodar localmente
@@ -55,11 +57,21 @@ Acesse `http://localhost:8000`.
 |---|---|
 | admin@grandstays.com | admin123 |
 
+## Testes
+
+```bash
+composer install
+createdb grandstays_test && psql grandstays_test < database/schema.sql && psql grandstays_test < database/seed.sql
+DB_NAME=grandstays_test vendor/bin/phpunit
+```
+
+Cobrem a validação da reserva (datas inexistentes, no passado ou invertidas, limite de hóspedes), a paginação, a busca com curingas digitados, a leitura de preços e o bloqueio de login. O GitHub Actions roda a suíte contra um PostgreSQL a cada push.
+
 ## Roadmap
 
 - [ ] Integração com gateway de pagamento real (a página de pagamento anterior era só uma simulação visual)
-- [ ] E-mail de confirmação automático ao hóspede
-- [ ] Paginação e busca por texto na listagem de hotéis
+- [x] E-mail de confirmação automático ao hóspede
+- [x] Paginação e busca por texto na listagem de hotéis
 
 ---
 
