@@ -27,14 +27,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $localizacao = trim($_POST['localizacao'] ?? '');
         $descricao   = trim($_POST['descricao'] ?? '');
         $comodidades = trim($_POST['comodidades'] ?? '');
-        $preco       = (float) str_replace(',', '.', $_POST['preco_noite'] ?? '0');
-        $avaliacao   = (float) str_replace(',', '.', $_POST['avaliacao'] ?? '5');
+        $preco       = lerDecimal((string) ($_POST['preco_noite'] ?? '0'));
+        $avaliacao   = lerDecimal((string) ($_POST['avaliacao'] ?? '5'));
         $imagem      = trim($_POST['imagem'] ?? 'hotel1.jfif');
 
         $categoriasValidas = ['Luxo', 'Resort', 'Boutique', 'Econômico'];
 
-        if ($nome === '' || !in_array($categoria, $categoriasValidas, true) || $localizacao === '' || $preco <= 0) {
+        // Limites do schema: preco_noite NUMERIC(10,2), avaliacao NUMERIC(2,1). Fora deles o UPDATE falhava com erro 500.
+        if ($nome === '' || !in_array($categoria, $categoriasValidas, true) || $localizacao === '' || $preco <= 0 || $preco >= 1e8) {
             $erro = 'Preencha nome, categoria, localização e um preço válido.';
+        } elseif ($avaliacao < 0 || $avaliacao > 5) {
+            $erro = 'A avaliação deve ficar entre 0 e 5.';
+        } elseif (!preg_match('/^[\w.-]+$/', $imagem) || !is_file(__DIR__ . '/../img/' . $imagem)) {
+            $erro = 'Informe o nome de um arquivo que exista na pasta img/.';
         } else {
             if ($id > 0) {
                 $stmt = $pdo->prepare(

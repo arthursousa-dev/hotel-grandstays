@@ -23,6 +23,19 @@ function formatarPreco(float $valor): string
     return 'R$ ' . number_format($valor, 2, ',', '.');
 }
 
+/**
+ * Converte o valor digitado em número. Aceita "1250", "1.250", "1.250,50" e o formato
+ * do banco ("1250.00", que o formulário de edição traz preenchido).
+ */
+function lerDecimal(string $valor): float
+{
+    $valor = str_replace(['R$', ' '], '', trim($valor));
+    if (preg_match('/^\d+(\.\d{1,2})?$/', $valor)) {
+        return (float) $valor;
+    }
+    return (float) str_replace(['.', ','], ['', '.'], $valor);
+}
+
 function formatarDataBr(string $data): string
 {
     $dt = date_create($data);
