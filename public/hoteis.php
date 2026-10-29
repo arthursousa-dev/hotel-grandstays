@@ -6,14 +6,34 @@ $categoriasValidas = ['Luxo', 'Resort', 'Boutique', 'Econômico'];
 $categoria = $_GET['categoria'] ?? '';
 $categoria = in_array($categoria, $categoriasValidas, true) ? $categoria : null;
 
-$pdo = conectar();
+$busca = trim((string) ($_GET['q'] ?? ''));
+
+$filtros = ['ativo'];
+$params = [];
 if ($categoria) {
-    $stmt = $pdo->prepare('SELECT * FROM hoteis WHERE ativo AND categoria = :cat ORDER BY avaliacao DESC');
-    $stmt->execute([':cat' => $categoria]);
-} else {
-    $stmt = $pdo->query('SELECT * FROM hoteis WHERE ativo ORDER BY avaliacao DESC');
+    $filtros[] = 'categoria = :cat';
+    $params[':cat'] = $categoria;
 }
+if ($busca !== '') {
+    $filtros[] = '(nome ILIKE :q OR localizacao ILIKE :q2 OR comodidades ILIKE :q3)';
+    $params[':q'] = $params[':q2'] = $params[':q3'] = termoBusca($busca);
+}
+$where = 'WHERE ' . implode(' AND ', $filtros);
+
+$pdo = conectar();
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM hoteis {$where}");
+$stmt->execute($params);
+$total = (int) $stmt->fetchColumn();
+$pag = paginar($total, 6, (int) ($_GET['pagina'] ?? 1));
+
+$stmt = $pdo->prepare("SELECT * FROM hoteis {$where} ORDER BY avaliacao DESC, nome LIMIT {$pag['limite']} OFFSET {$pag['offset']}");
+$stmt->execute($params);
 $hoteis = $stmt->fetchAll();
+
+$link = fn(array $mudancas) => 'hoteis.php?' . http_build_query(array_filter(
+    array_merge(['categoria' => $categoria, 'q' => $busca, 'pagina' => null], $mudancas),
+    fn($v) => $v !== null && $v !== '' && $v !== 1
+));
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -40,16 +60,24 @@ $hoteis = $stmt->fetchAll();
           <div class="divider"></div>
         </div>
 
+        <form class="busca" method="get" action="hoteis.php" role="search">
+          <?php if ($categoria): ?><input type="hidden" name="categoria" value="<?= limpar($categoria) ?>"><?php endif; ?>
+          <input type="search" name="q" value="<?= limpar($busca) ?>" placeholder="Buscar por nome, cidade ou comodidade" aria-label="Buscar hotéis" maxlength="80">
+          <button type="submit" class="btn-dark">Buscar</button>
+        </form>
+
         <div class="filters">
-          <a href="hoteis.php" class="filter-btn <?= !$categoria ? 'ativo' : '' ?>">Todos</a>
+          <a href="<?= limpar($link(['categoria' => null])) ?>" class="filter-btn <?= !$categoria ? 'ativo' : '' ?>">Todos</a>
           <?php foreach ($categoriasValidas as $c): ?>
-            <a href="hoteis.php?categoria=<?= urlencode($c) ?>" class="filter-btn <?= $categoria === $c ? 'ativo' : '' ?>"><?= $c ?></a>
+            <a href="<?= limpar($link(['categoria' => $c])) ?>" class="filter-btn <?= $categoria === $c ? 'ativo' : '' ?>"><?= $c ?></a>
           <?php endforeach; ?>
         </div>
 
+        <p class="resultado-busca"><?= $total ?> <?= $total === 1 ? 'hotel encontrado' : 'hotéis encontrados' ?><?= $busca !== '' ? ' para “' . limpar($busca) . '”' : '' ?></p>
+
         <div class="grid-3">
           <?php if (empty($hoteis)): ?>
-            <p>Nenhum hotel encontrado nessa categoria.</p>
+            <p>Nenhum hotel encontrado. <a href="hoteis.php">Ver todos</a></p>
           <?php endif; ?>
 
           <?php foreach ($hoteis as $hotel): ?>
@@ -79,6 +107,20 @@ $hoteis = $stmt->fetchAll();
             </div>
           <?php endforeach; ?>
         </div>
+
+        <?php if ($pag['total_paginas'] > 1): ?>
+          <div class="paginacao" role="navigation" aria-label="Páginas do catálogo">
+            <?php if ($pag['pagina'] > 1): ?><a href="<?= limpar($link(['pagina' => $pag['pagina'] - 1])) ?>">‹ Anterior</a><?php endif; ?>
+            <?php for ($p = 1; $p <= $pag['total_paginas']; $p++): ?>
+              <?php if ($p === $pag['pagina']): ?>
+                <span aria-current="page"><?= $p ?></span>
+              <?php else: ?>
+                <a href="<?= limpar($link(['pagina' => $p])) ?>"><?= $p ?></a>
+              <?php endif; ?>
+            <?php endfor; ?>
+            <?php if ($pag['pagina'] < $pag['total_paginas']): ?><a href="<?= limpar($link(['pagina' => $pag['pagina'] + 1])) ?>">Próxima ›</a><?php endif; ?>
+          </div>
+        <?php endif; ?>
 
       </div>
     </div>
