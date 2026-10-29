@@ -8,10 +8,10 @@ $categoria = in_array($categoria, $categoriasValidas, true) ? $categoria : null;
 
 $pdo = conectar();
 if ($categoria) {
-    $stmt = $pdo->prepare('SELECT * FROM hoteis WHERE ativo = 1 AND categoria = :cat ORDER BY avaliacao DESC');
+    $stmt = $pdo->prepare('SELECT * FROM hoteis WHERE ativo AND categoria = :cat ORDER BY avaliacao DESC');
     $stmt->execute([':cat' => $categoria]);
 } else {
-    $stmt = $pdo->query('SELECT * FROM hoteis WHERE ativo = 1 ORDER BY avaliacao DESC');
+    $stmt = $pdo->query('SELECT * FROM hoteis WHERE ativo ORDER BY avaliacao DESC');
 }
 $hoteis = $stmt->fetchAll();
 ?>

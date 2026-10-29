@@ -9,13 +9,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['acao'] ?? '') === 'excluir
         die('Sessão expirada. Recarregue a página e tente novamente.');
     }
     $id = (int) ($_POST['id'] ?? 0);
-    $stmt = conectar()->prepare('UPDATE hoteis SET ativo = 0 WHERE id = :id');
+    $stmt = conectar()->prepare('UPDATE hoteis SET ativo = false WHERE id = :id');
     $stmt->execute([':id' => $id]);
     header('Location: hoteis.php');
     exit;
 }
 
-$hoteis = conectar()->query('SELECT * FROM hoteis WHERE ativo = 1 ORDER BY nome')->fetchAll();
+$hoteis = conectar()->query('SELECT * FROM hoteis WHERE ativo ORDER BY nome')->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">

@@ -3,7 +3,7 @@ require_once __DIR__ . '/bootstrap_sessao.php';
 require __DIR__ . '/../app/helpers.php';
 
 $id = (int) ($_GET['id'] ?? 0);
-$stmt = conectar()->prepare('SELECT * FROM hoteis WHERE id = :id AND ativo = 1');
+$stmt = conectar()->prepare('SELECT * FROM hoteis WHERE id = :id AND ativo');
 $stmt->execute([':id' => $id]);
 $hotel = $stmt->fetch();
 

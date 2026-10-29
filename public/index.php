@@ -3,7 +3,7 @@ require_once __DIR__ . '/bootstrap_sessao.php';
 require __DIR__ . '/../app/helpers.php';
 
 $stmt = conectar()->query(
-    'SELECT * FROM hoteis WHERE ativo = 1 ORDER BY avaliacao DESC LIMIT 3'
+    'SELECT * FROM hoteis WHERE ativo ORDER BY avaliacao DESC LIMIT 3'
 );
 $destaques = $stmt->fetchAll();
 ?>

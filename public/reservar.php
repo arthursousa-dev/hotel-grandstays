@@ -45,7 +45,7 @@ if (!$checkin || !$checkout || $checkout <= $checkin) $erros[] = 'datas';
 if ($hospedes < 1 || $hospedes > 10) $erros[] = 'hóspedes';
 
 $pdo = conectar();
-$stmt = $pdo->prepare('SELECT id FROM hoteis WHERE id = :id AND ativo = 1');
+$stmt = $pdo->prepare('SELECT id FROM hoteis WHERE id = :id AND ativo');
 $stmt->execute([':id' => $hotelId]);
 if (!$stmt->fetch()) {
     $erros[] = 'hotel';

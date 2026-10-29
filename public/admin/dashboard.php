@@ -4,7 +4,7 @@ require __DIR__ . '/../../app/helpers.php';
 exigirAdmin();
 
 $pdo = conectar();
-$totalHoteis  = (int) $pdo->query('SELECT COUNT(*) FROM hoteis WHERE ativo = 1')->fetchColumn();
+$totalHoteis  = (int) $pdo->query('SELECT COUNT(*) FROM hoteis WHERE ativo')->fetchColumn();
 $totalReservas = (int) $pdo->query('SELECT COUNT(*) FROM reservas')->fetchColumn();
 $pendentes     = (int) $pdo->query("SELECT COUNT(*) FROM reservas WHERE status = 'pendente'")->fetchColumn();
 $recentes      = $pdo->query(
